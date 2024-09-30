@@ -102,6 +102,9 @@ with open("config/aches.json", "r") as f:
 with open("config/battlepass.json", "r") as f:
     battle = json.load(f)
 
+with open("lore.json", "r") as f: # RIP MatPat
+    lore = json.load(f)
+
 # convert achievement json to a few other things
 ach_names = ach_list.keys()
 ach_titles = {value["title"].lower(): key for (key, value) in ach_list.items()}
@@ -1227,10 +1230,9 @@ async def info(message: discord.Interaction):
         return
 
     await message.response.defer()
-
     embedVar = discord.Embed(title="Cat Bot", color=0x6E593C, description="[Join support server](https://discord.gg/staring)\n[GitHub Page](https://github.com/milenakos/cat-bot)\n\n" + \
                              f"by {gen_credits['author']}\nWith contributions from {gen_credits['contrib']}.\n\nThis bot adds Cat Hunt to your server with many different types of cats for people to discover! People can see leaderboards and give cats to each other.\n\n" + \
-                             f"Thanks to:\n**pathologicals** for the cat image\n**thecatapi.com** for random cats API\n**countik** for TikTok TTS API\n**{gen_credits['trash']}** for making cat, suggestions, and a lot more.\n\n**{gen_credits['tester']}** for being test monkeys\n\n**And everyone for the support!**"
+                             f"Thanks to:\n**pathologicals** for the cat image\n**thecatapi.com** for random cats API\n**countik** for TikTok TTS API\n**{gen_credits['trash']}** for making cat, suggestions, lore, and a lot more.\n\n**{gen_credits['tester']}** for being test monkeys\n\n**And everyone for the support!**"
                             ).set_thumbnail(url="https://wsrv.nl/?url=raw.githubusercontent.com/milenakos/cat-bot/main/images/cat.png")
 
     # add "last update" to footer if we are using git
@@ -1238,6 +1240,25 @@ async def info(message: discord.Interaction):
         embedVar.timestamp = datetime.datetime.fromtimestamp(int(subprocess.check_output(["git", "show", "-s", "--format=%ct"]).decode("utf-8")))
         embedVar.set_footer(text="Last code update:")
     await message.followup.send(embed=embedVar)
+
+
+@bot.tree.command(description="View information about a cat")
+@discord.app_commands.rename(cat_type="type")
+@discord.app_commands.describe(cat_type="Select a cat type")
+@discord.app_commands.autocomplete(cat_type=cat_type_autocomplete)
+async def catinfo(message: discord.Interaction, cat_type: str):
+    if cat_type not in cattypes:
+        await message.response.send_message("cat does not exist", ephemeral=True)
+        return
+    icon = get_emoji(cat_type.lower() + "cat")
+    s = sum(type_dict.values())
+    v = type_dict[cat_type]
+    embed = discord.Embed(title=f"{icon} {cat_type} Cat", color=0x6E593C) # possibly make color different per cat type
+    embed.add_field(name="LORE", value=lore[cat_type], inline=False)
+    embed.add_field(name="You have", value=get_cat(message.guild.id, message.user.id, cat_type), inline=True)
+    embed.add_field(name="Spawn Chance", value=f"{round(v / s * 100, 2)}%", inline=True)
+    embed.add_field(name="Trade Value", value=str(round(s / v, 1)), inline=True)
+    await message.response.send_message(embed=embed)
 
 
 @bot.tree.command(description="Read text as TikTok's TTS woman")
@@ -2174,6 +2195,16 @@ async def trade(message: discord.Interaction, person_id: discord.User):
 
             await interaction.response.defer()
             await update_trade_embed(interaction)
+
+
+@bot.tree.command(description="See the rarity and trade value of each cat type")
+async def rarities(message: discord.Interaction):
+    embed = discord.Embed(title="Cat Type Rarities", color=0x6E593C)
+    s = sum(type_dict.values())
+    for k, v in type_dict.items():
+        icon = get_emoji(k.lower() + "cat")
+        embed.add_field(name=f"{icon} {k}", inline=True, value=f"Rarity: {round(v / s * 100, 2)}%\nValue: {round(s / v)}")
+    await message.response.send_message(embed=embed)
 
 
 @bot.tree.command(description="Get Cat Image, does not add a cat to your inventory")
